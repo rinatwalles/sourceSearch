@@ -12,8 +12,7 @@ using Nest;
 using Elastic.Clients.Elasticsearch.IndexManagement;
 
 
-//להוסיף שם,שם
-namespace ConsoleApp1
+namespace SourceSearch
 {
     
     static class Program
