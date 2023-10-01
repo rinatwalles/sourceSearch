@@ -8,6 +8,8 @@ using Newtonsoft.Json;
 using System.Threading.Tasks;
 using Syncfusion.DocIO.DLS;
 using Syncfusion.DocIO;
+using Nest;
+using Elastic.Clients.Elasticsearch.IndexManagement;
 
 
 //להוסיף שם,שם
@@ -24,7 +26,7 @@ namespace ConsoleApp1
         //public Dictionary<string, string> letters;
 
 
-         static Program()
+            static Program()
         {
             books = new Dictionary<string, string>(){
                 {"Genesis", "בראשית"},
@@ -73,41 +75,59 @@ namespace ConsoleApp1
         {
             int index;
             string newStr;
+            string postResult, hebrowResult="", oldRes;
+            string shomRes;
             //Console.WriteLine("enter file's path");
             //string path = System.Console.ReadLine();
             //Program p= new Program();//singelton
-            //string path = @"C:\Users\eliwa\OneDrive\רינת\אבוש\sourceSearch\ConsoleApp1\try.txt";
-            using (WordDocument document = new WordDocument(@"C:\Users\eliwa\Downloads\english.docx", FormatType.Docx))
-            {
+            string path = @"C:\Users\eliwa\OneDrive\רינת\אבוש\sourceSearch\ConsoleApp1\try.txt";
+            //using (WordDocument document = new WordDocument(@"C:\Users\eliwa\Downloads\english.docx"))
+            //{
                 //Gets the Word document text
-                string file = document.GetText();
+                //string file = document.GetText();
                 //Display Word document's text content.
-                Console.WriteLine(file);
-                Console.ReadLine();
+                //Console.WriteLine(file);
+                //Console.ReadLine();
 
-                //string file = File.ReadAllText(@path);
+                string file = File.ReadAllText(@path);
                 List<string> results = find(file);
                 foreach (string result in results)
                 {
+                    oldRes = hebrowResult;
                     Console.WriteLine(result);
-                    string postResult = source(result).GetAwaiter().GetResult();
-                    string hebrowResult = hebrowSource(postResult);
+                    postResult = source(result).GetAwaiter().GetResult();
+                    hebrowResult = hebrowSource(postResult);
                     if (hebrowResult != "0")
                     {
+                        shomRes = shomShom(hebrowResult,oldRes);
                         index = file.LastIndexOf(result);
-                        newStr = file.Insert(index, " (" + hebrowResult + ")");
-                        Console.WriteLine("(" + hebrowResult + ")");
+                        newStr = file.Insert(index, " (" + shomRes + ")");
+                        Console.WriteLine("(" + shomRes + ")");
                         file = newStr;
                     }
+                    else 
+                    {
+                        hebrowResult = partVerse(result);
+                        if (hebrowResult != "0")
+                        {
+                            shomRes = shomShom(hebrowResult, oldRes);
+                            index = file.LastIndexOf(result);
+                            newStr = file.Insert(index, " (" + shomRes + ")");
+                            Console.WriteLine("(" + shomRes + ")");
+                            file = newStr;
+                        }
 
 
+                    }
+
+                
                 }
                 string pathRes = @"C:\Users\eliwa\OneDrive\רינת\אבוש\sourceSearch\ConsoleApp1\res.txt";
 
                 //var pathRes = "data.txt";
 
                 File.WriteAllText(pathRes, file);
-            }
+            //}
 
         }
 
@@ -127,6 +147,61 @@ namespace ConsoleApp1
                 results.Add(match.Groups[2].Value);
             }
             return results;
+        }
+        static string partVerse(string verse)
+        {
+            string postResult,hebrowResult;
+            string newVerse = verse;
+            string[] subs = verse.Split(' ');
+
+            for (int i = subs.Length - 1; i >= 3; i--)
+            {
+                newVerse = newVerse.Remove(newVerse.Length - subs[i].Length-1, subs[i].Length+1);
+                postResult = source(newVerse).GetAwaiter().GetResult();
+                hebrowResult = hebrowSource(postResult);
+                if (hebrowResult != "0")
+                {
+                    return hebrowResult;
+                }
+
+            }
+            return "0";
+
+        }
+        static string shomShom(string res, string oldRes)
+        {
+            string[] subsRes = res.Split(' ');
+            string[] subsOld = oldRes.Split(' ');
+
+            if (subsRes.Length == subsOld.Length)
+            {
+                if (subsRes.Length == 4)
+                {
+                    if (subsRes[0] == subsOld[0] && subsRes[1] == subsOld[1])
+                    {
+                        if (subsRes[2] == subsOld[2])
+                        {
+                            return "שם שם " + subsRes[3];
+                        }
+                        else
+                            return "שם " + subsRes[3] + " " + subsRes[2];
+                    }
+                }
+                if (subsRes.Length == 3)
+                {
+                    if (subsRes[0] == subsOld[0] )
+                    {
+                        if (subsRes[1] == subsOld[1])
+                        {
+                            return "שם שם " + subsRes[2];
+                        }
+                        else
+                            return "שם " + subsRes[2] + " " + subsRes[1];
+                    }
+                }
+            }
+            return res;
+
         }
 
         static async Task<string> source(string str)
@@ -172,7 +247,6 @@ namespace ConsoleApp1
                     if (postResult[index + 1].Equals(':'))
                     {
                         numVal = Int32.Parse(new string(postResult[index], 1));
-                        //chapter = Convert.ToString(Convert.ToChar('\u05D0' + Convert.ToChar(numVal - 1)));
                         index= index + 2;//number :
                         
                         chapter = FormatHebrew(numVal);
@@ -295,7 +369,7 @@ namespace ConsoleApp1
         }
 
     }
-    }
+}
 
 
 
@@ -304,18 +378,18 @@ namespace ConsoleApp1
 
 
 /*
-  var values = new
-                {
-                    query = str,
-                    sort_method = "score",
-                    source_proj = "heRef",
-                    //type = "text",
-                    filters = new[] { "Tanach with Nikkud" },
-                    //aggs = "heRef",
-                    field = "naive_lemmatizer",
-                    //filters = new[] { "Tanakh" },
-                    filter_fields = new[] { "version" }
-                };
+var values = new
+            {
+                query = str,
+                sort_method = "score",
+                source_proj = "heRef",
+                //type = "text",
+                filters = new[] { "Tanach with Nikkud" },
+                //aggs = "heRef",
+                field = "naive_lemmatizer",
+                //filters = new[] { "Tanakh" },
+                filter_fields = new[] { "version" }
+            };
 */
 
 
@@ -323,34 +397,34 @@ namespace ConsoleApp1
 /*
 static async Task Main(string[] args)
 {
-    string quote = "כָּל-הָעָם רָאֲוּ אֶת-הַקּוֹלֹת";
-    string url = $"https://www.sefaria.org/api/search?q={quote}&category=Text";
+string quote = "כָּל-הָעָם רָאֲוּ אֶת-הַקּוֹלֹת";
+string url = $"https://www.sefaria.org/api/search?q={quote}&category=Text";
 
-    HttpClient client = new HttpClient();
-    HttpResponseMessage response = await client.GetAsync(url);
+HttpClient client = new HttpClient();
+HttpResponseMessage response = await client.GetAsync(url);
 
-    if (response.IsSuccessStatusCode)
+if (response.IsSuccessStatusCode)
+{
+    string responseBody = await response.Content.ReadAsStringAsync();
+    dynamic data = JObject.Parse(responseBody);
+
+    if (data?.error == null && data?.he == quote)
     {
-        string responseBody = await response.Content.ReadAsStringAsync();
-        dynamic data = JObject.Parse(responseBody);
+        string book = data?.section_ref?.book;
+        int chapter = data?.section_ref?.chapter ?? 0;
+        int verse = data?.section_ref?.verse ?? 0;
 
-        if (data?.error == null && data?.he == quote)
-        {
-            string book = data?.section_ref?.book;
-            int chapter = data?.section_ref?.chapter ?? 0;
-            int verse = data?.section_ref?.verse ?? 0;
-
-            Console.WriteLine($"{book} {chapter}:{verse}");
-        }
-        else
-        {
-            Console.WriteLine("Error: Unable to retrieve Bible reference");
-        }
+        Console.WriteLine($"{book} {chapter}:{verse}");
     }
     else
     {
-        Console.WriteLine("Error: Unable to retrieve data from API");
+        Console.WriteLine("Error: Unable to retrieve Bible reference");
     }
+}
+else
+{
+    Console.WriteLine("Error: Unable to retrieve data from API");
+}
 }
 */
 
@@ -436,11 +510,11 @@ static async Task Main(string[] args)
 
 
 /*
- using (var client = new HttpClient())
-            {
-                var endpoint = new Uri("https://www.sefaria.org/api/search-wrapper");
+using (var client = new HttpClient())
+        {
+            var endpoint = new Uri("https://www.sefaria.org/api/search-wrapper");
                
-            }
+        }
 //var values = new
 //{
 //    query = str,
@@ -488,9 +562,9 @@ bb.Add("</b>");
 var values = new
 {
 
-    query = str,
-    type = "sheet",
-    field = "content"
+query = str,
+type = "sheet",
+field = "content"
 
 
 };
@@ -528,9 +602,9 @@ var postResult = await client.PostAsync(endpoint, payload).Result.Content.ReadAs
 /*
 public class Sort
 {
-            public CompDate comp_date { get; set; }
+        public CompDate comp_date { get; set; }
 public Order order { get; set; }
-        }
+    }
 */
 
 
@@ -558,65 +632,65 @@ public Order order { get; set; }
 //chat gpt
 /* string newstr = "what is the hebrow bilbe source for: \"" + str +"\" in this format (book name, chapter, verse), answer in hebrow according to wikisource" ;
 
-           HttpClient client = new HttpClient();
+        HttpClient client = new HttpClient();
 
-           client.DefaultRequestHeaders.Add("authorization", "Bearer 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");
+        client.DefaultRequestHeaders.Add("authorization", "Bearer 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");
 
-           //var content = new StringContent("{\"model\": \"text-babbage-001\", \"prompt\": \"" + newstr + "\",\"temperature\": 1,\"max_tokens\": 100}",
-              // Encoding.UTF8, "application/json");         //string to json without an object
-           //Console.WriteLine(content.);
-           var values = new 
-           {
-               model = "gpt-3.5-turbo",
-               prompt = newstr,
-               temperature = 1,
-               max_tokens=100
-           };
-           var newPostJson = JsonConvert.SerializeObject(values);
-           var payload = new StringContent(newPostJson, Encoding.UTF8, "application/json");
+        //var content = new StringContent("{\"model\": \"text-babbage-001\", \"prompt\": \"" + newstr + "\",\"temperature\": 1,\"max_tokens\": 100}",
+            // Encoding.UTF8, "application/json");         //string to json without an object
+        //Console.WriteLine(content.);
+        var values = new 
+        {
+            model = "gpt-3.5-turbo",
+            prompt = newstr,
+            temperature = 1,
+            max_tokens=100
+        };
+        var newPostJson = JsonConvert.SerializeObject(values);
+        var payload = new StringContent(newPostJson, Encoding.UTF8, "application/json");
 
-           HttpResponseMessage response = await client.PostAsync("https://api.openai.com/v1/chat/completions", payload);
+        HttpResponseMessage response = await client.PostAsync("https://api.openai.com/v1/chat/completions", payload);
 
-           string responseString = await response.Content.ReadAsStringAsync();
+        string responseString = await response.Content.ReadAsStringAsync();
 
-           Console.WriteLine(responseString);*/
+        Console.WriteLine(responseString);*/
 /*
 var searchRequest = new Nest.SearchRequest<Document>(Nest.Indices.All)
 //var client = new RestClient(apiUrl);
 {
-    From = 0,
-    Size = 10,
-    Query = new MatchQuery
-    {
-        Field = Nest.Infer.Field<Document>(f => f.naive_lemmatizer),
-        Query = str
-    }
+From = 0,
+Size = 10,
+Query = new MatchQuery
+{
+    Field = Nest.Infer.Field<Document>(f => f.naive_lemmatizer),
+    Query = str
+}
 };
 
-  var content = new FormUrlEncodedContent(values);
+var content = new FormUrlEncodedContent(values);
 
-            var response = await client.PostAsync("https://www.sefaria.org/api/search/:index/_search", content);
+        var response = await client.PostAsync("https://www.sefaria.org/api/search/:index/_search", content);
 
-            var responseString = await response.Content.ReadAsStringAsync();
- */
+        var responseString = await response.Content.ReadAsStringAsync();
+*/
 //  var searchResponse = await client.SearchAsync<Document>(searchRequest);
 
 /*
- * public class Document
-    {
-        public string path { get; set; }
-        public List<string> titleVariants { get; set; }
-        public string exact { get; set; }
-        public int comp_date { get; set; }
-        public List<string> categories { get; set; }
-        public string lang { get; set; }
-        public double pagesheetrank { get; set; }
-        public string title { get; set; }
-        public string heRef { get; set; }
-        public string version { get; set; }
-        public string naive_lemmatizer { get; set; }
-        public string reff { get; set; }
-        public int version_priority { get; set; }
-        public string order { get; set; }
-    }
+* public class Document
+{
+    public string path { get; set; }
+    public List<string> titleVariants { get; set; }
+    public string exact { get; set; }
+    public int comp_date { get; set; }
+    public List<string> categories { get; set; }
+    public string lang { get; set; }
+    public double pagesheetrank { get; set; }
+    public string title { get; set; }
+    public string heRef { get; set; }
+    public string version { get; set; }
+    public string naive_lemmatizer { get; set; }
+    public string reff { get; set; }
+    public int version_priority { get; set; }
+    public string order { get; set; }
+}
 */
