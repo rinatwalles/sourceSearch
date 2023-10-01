@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -17,8 +18,8 @@ namespace ConsoleApp1
 
         static Program()
         {
-            //
-            books = new (){
+            //TODO: check if lower case and upper case are needed too
+            books = new(){
                 { "Genesis", "בראשית"},
                 { "Exodus", "שמות"},
                 { "Leviticus", "ויקרא"},
@@ -61,15 +62,63 @@ namespace ConsoleApp1
 
         }
 
-        static void Main(string[] args)
+        /*
+         * public IFileReader
+         * {
+         *      string Read();
+         * }
+         * 
+         * internal TextFileReader: IFileReader
+         * {
+         *      public string Read()
+         *      {
+         *          return null;
+         *      }
+         * }
+         * 
+         * internal WordFileReader: IFileReader
+         * {
+         *      public string Read()
+         *      {
+         *          return null;
+         *      }
+         *  }
+         *  
+         *  public class IFileHandler
+         *  {
+         *      string Handle(string path);
+         *  }
+         *  
+         *  internal FileHandler: IFileHandler
+         * {
+         *      public string Handle(string path)
+         *      {
+         *          if(file.GetFileExtension(path) == "txt")
+         *             reader = new TextReader();
+         *          else
+         *              reader = new WordReader();
+         *          
+         *          var txt = reader.Read(path);
+         *          
+         *          var psukim = FindAllThePsukim(txt);
+         *          ...
+         *      }
+         *  }
+        */
+
+        static void Main(string[] args)//TODO: remove the arg if it's not in use
         {
             int index;
             string newStr;
             string postResult, hebrowResult = "", oldRes;
             string shomRes;
+            //TODO: remove commented out code
+
             //Console.WriteLine("enter file's path");
             //string path = System.Console.ReadLine();
             //Program p= new Program();//singelton
+
+            //TODO: to get the path from the user as an input
             string path = @"C:\Users\eliwa\OneDrive\רינת\אבוש\sourceSearch\ConsoleApp1\try.txt";
             //using (WordDocument document = new WordDocument(@"C:\Users\eliwa\Downloads\english.docx"))
             //{
@@ -79,12 +128,14 @@ namespace ConsoleApp1
             //Console.WriteLine(file);
             //Console.ReadLine();
 
+            //TODO: use "var" when it's possible
             string file = File.ReadAllText(@path);
             List<string> results = find(file);
             foreach (string result in results)
             {
                 oldRes = hebrowResult;
                 Console.WriteLine(result);
+                //TODO: in the handler this method should be async and use await. DO NOT USE GetAwaiter().GetResult().
                 postResult = source(result).GetAwaiter().GetResult();
                 hebrowResult = hebrowSource(postResult);
                 if (hebrowResult != "0")
@@ -106,38 +157,24 @@ namespace ConsoleApp1
                         Console.WriteLine("(" + shomRes + ")");
                         file = newStr;
                     }
-
-
                 }
-
-
             }
             string pathRes = @"C:\Users\eliwa\OneDrive\רינת\אבוש\sourceSearch\ConsoleApp1\res.txt";
-
-            //var pathRes = "data.txt";
-
             File.WriteAllText(pathRes, file);
-            //}
-
         }
 
-
-
-
-
+        //TODO: method's name should be in pascal case
+        //TODO: rename method to indicate its purpose
         static List<string> find(string all)
         {
-            List<string> results = new List<string>();
             string pettren = "(שנאמר|וכתיב|שנא'|אמר הכתוב|וכאן הוא אומר|על פסוק|על מה שנאמר|מלשון)(?<x>.+?):";
-            //string all = File.ReadAllText(@path);
             MatchCollection mateches = Regex.Matches(all, pettren);
-            foreach (Match match in mateches)
-            {
-                Console.WriteLine(match.Groups[2].Value);
-                results.Add(match.Groups[2].Value);
-            }
-            return results;
+
+            return mateches
+                    .Select(match => match.Groups[2].Value)
+                    .ToList();
         }
+
         static string partVerse(string verse)
         {
             string postResult, hebrowResult;
@@ -158,69 +195,60 @@ namespace ConsoleApp1
             return "0";
 
         }
+
         static string shomShom(string res, string oldRes)
         {
             string[] subsRes = res.Split(' ');
             string[] subsOld = oldRes.Split(' ');
+            string concat = string.Empty;
 
             if (subsRes.Length == subsOld.Length)
             {
-                if (subsRes.Length == 4)
+                if (subsRes.Length == 4 && subsRes[0] == subsOld[0] && subsRes[1] == subsOld[1])
                 {
-                    if (subsRes[0] == subsOld[0] && subsRes[1] == subsOld[1])
-                    {
-                        if (subsRes[2] == subsOld[2])
-                        {
-                            return "שם שם " + subsRes[3];
-                        }
-                        else
-                            return "שם " + subsRes[3] + " " + subsRes[2];
-                    }
+                    if (subsRes[2] == subsOld[2])
+                        concat = $"שם שם {subsRes[3]}";
+                    else
+                        concat = $"שם {subsRes[3]} {subsRes[2]}";
                 }
-                if (subsRes.Length == 3)
+                else if (subsRes.Length == 3 && subsRes[0] == subsOld[0])
                 {
-                    if (subsRes[0] == subsOld[0])
-                    {
-                        if (subsRes[1] == subsOld[1])
-                        {
-                            return "שם שם " + subsRes[2];
-                        }
-                        else
-                            return "שם " + subsRes[2] + " " + subsRes[1];
-                    }
+                    if (subsRes[1] == subsOld[1])
+                        concat = $"שם שם {subsRes[2]}";
+                    else
+                        concat = $"שם {subsRes[1]} {subsRes[1]}";
                 }
-            }
-            return res;
 
+                return concat;
+            }
+
+            return res;
         }
 
         static async Task<string> source(string str)
         {
-            using (var client = new HttpClient())
+            using var client = new HttpClient();//TODO: inject HttpClientFactory
+            string endpoint = "https://www.sefaria.org/api/search-wrapper";
+
+            var values = new
             {
-                string endpoint = "https://www.sefaria.org/api/search-wrapper";
+                query = str,
 
+                type = "text",
 
+                field = "naive_lemmatizer",
 
-                var values = new
-                {
-                    query = str,
+                filters = new[] { "Tanakh" }
 
-                    type = "text",
+            };
 
-                    field = "naive_lemmatizer",
+            var newPostJson = JsonConvert.SerializeObject(values);
 
-                    filters = new[] { "Tanakh" }
+            var payload = new StringContent(newPostJson, Encoding.UTF8, "application/json");
 
-                };
-                var newPostJson = JsonConvert.SerializeObject(values);
+            var postResult = await (await client.PostAsync(endpoint, payload)).Content.ReadAsStringAsync();
 
-                var payload = new StringContent(newPostJson, Encoding.UTF8, "application/json");
-
-                var postResult = await client.PostAsync(endpoint, payload).Result.Content.ReadAsStringAsync();
-
-                return postResult;
-            }
+            return postResult;
         }
 
         static string hebrowSource(string postResult)
@@ -236,7 +264,7 @@ namespace ConsoleApp1
                     index = postResult.IndexOf(book.Key) + book.Key.Length + 1;
                     if (postResult[index + 1].Equals(':'))
                     {
-                        numVal = Int32.Parse(new string(postResult[index], 1));
+                        numVal = int.Parse(new string(postResult[index], 1));
                         index = index + 2;//number :
 
                         chapter = FormatHebrew(numVal);
@@ -276,7 +304,7 @@ namespace ConsoleApp1
                     }
                     else
                     {
-                        numVal = Int32.Parse(new string(postResult[index], 1));
+                        numVal = int.Parse(new string(postResult[index], 1));
                         numVal = numVal * 10 + Int32.Parse(new string(postResult[index + 1], 1));
                         numVal = numVal * 10 + Int32.Parse(new string(postResult[index + 2], 1));
 

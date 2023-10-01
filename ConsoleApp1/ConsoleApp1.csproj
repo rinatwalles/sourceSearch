@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    //TODO: remove unnecessary packages
     <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.0.4" />
     <PackageReference Include="Elasticsearch.Net" Version="7.17.5" />
     <PackageReference Include="NEST" Version="7.17.5" />
