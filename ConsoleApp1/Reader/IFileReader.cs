@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace sourceSearch.Reader
+namespace sourceSearch
 {
-    internal interface Interface1
+    internal interface IFileReader
     {
+        string Read(string path);
     }
 }

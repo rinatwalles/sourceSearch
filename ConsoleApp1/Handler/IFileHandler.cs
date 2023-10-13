@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace sourceSearch.Handler
+namespace sourceSearch
 {
-    internal interface Interface1
+    internal interface IFileHandler
     {
+        void Handle(string path);
     }
 }
