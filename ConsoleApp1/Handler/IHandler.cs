@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace sourceSearch
 {
-    internal interface IFileHandler
+    internal interface IHandler
     {
         void Handle(string path);
     }
