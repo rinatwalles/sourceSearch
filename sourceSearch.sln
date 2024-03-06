@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33627.172
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{9F5B361C-F251-4B16-B95F-F16B48552AF3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "sourceSearch", "ConsoleApp1\sourceSearch.csproj", "{9F5B361C-F251-4B16-B95F-F16B48552AF3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApplication1", "WebApplication1\WebApplication1.csproj", "{19C9562B-34DC-41F4-AC9A-F74C4FF6F159}"
 EndProject

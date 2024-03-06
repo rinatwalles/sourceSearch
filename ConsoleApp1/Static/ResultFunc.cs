@@ -1,27 +1,16 @@
 ﻿using System;
-using System.IO;
-using System.Text;
 using System.Collections.Generic;
-using System.Net.Http;
-using Newtonsoft.Json;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using System.Text.RegularExpressions;
-using sourceSearch;
+using static System.Reflection.Metadata.BlobBuilder;
 
-namespace SourceSearch
+namespace sourceSearch
 {
-
-    static class Program
+    public static class ResultFunc
     {
-        public class CompDate { }
-        public class Order { }
-
         public static Dictionary<string, string> books;
-
-
-
-        static Program()
+        static ResultFunc()
         {
             books = new(){
                 {"Genesis", "בראשית"},
@@ -65,118 +54,7 @@ namespace SourceSearch
             };
 
         }
-
-        static void Main()
-        {
-            
-            var path = @"C:\Users\eliwa\OneDrive\רינת\אבוש\sourceSearch\ConsoleApp1\try.txt";
-            IHandler handler = new FileHandler();
-            handler.Handle(path);
-        }
-
-
-
-        static List<string> FindVerse(string all)
-        {
-            var results = new List<string>();
-            var pettren = "(שנאמר|וכתיב|שנא'|אמר הכתוב|וכאן הוא אומר|על פסוק|על מה שנאמר|מלשון)(?<x>.+?):";
-            MatchCollection mateches = Regex.Matches(all, pettren);
-            foreach (Match match in mateches)
-            {
-                Console.WriteLine(match.Groups[2].Value);
-                results.Add(match.Groups[2].Value);
-            }
-            return results;
-        }
-
-
-        static string PartVerse(string verse)
-        {
-            string postResult, hebrowResult;
-            var newVerse = verse;
-            var subs = verse.Split(' ');
-
-            for (int i = subs.Length - 1; i >= 3; i--)
-            {
-                newVerse = newVerse.Remove(newVerse.Length - subs[i].Length - 1, subs[i].Length + 1);
-                postResult = VerseSource(newVerse).GetAwaiter().GetResult();
-                hebrowResult = HebrowSource(postResult);
-                if (hebrowResult != "0")
-                {
-                    return hebrowResult;
-                }
-
-            }
-            return "0";
-
-        }
-        static string SameVerse(string res, string oldRes)
-        {
-            var subsRes = res.Split(' ');
-            var subsOld = oldRes.Split(' ');
-            string concat = string.Empty;
-
-            if (subsRes.Length == subsOld.Length)
-            {
-                if (subsRes.Length == 4 && subsRes[0] == subsOld[0] && subsRes[1] == subsOld[1])
-                {
-                    if (subsRes[2] == subsOld[2])
-                        concat = $"שם שם {subsRes[3]}";
-                    else
-                        concat = $"שם {subsRes[3]} {subsRes[2]}";
-                }
-                else if (subsRes.Length == 3 && subsRes[0] == subsOld[0])
-                {
-                    if (subsRes[1] == subsOld[1])
-                        concat = $"שם שם {subsRes[2]}";
-                    else
-                        concat = $"שם {subsRes[1]} {subsRes[1]}";
-                }
-
-                return concat;
-            }
-
-            return res;
-
-
-        }
-
-        static async Task<string> VerseSource(string str)
-        {
-            var serviceCollection = new ServiceCollection();
-            ConfigurationService(serviceCollection);
-            var services = serviceCollection.BuildServiceProvider();
-            var httpClientFactory = services.GetRequiredService<IHttpClientFactory>();
-            var client = httpClientFactory.CreateClient();
-
-            var endpoint = "https://www.sefaria.org/api/search-wrapper";
-
-            var values = new
-            {
-                query = str,
-
-                type = "text",
-
-                field = "naive_lemmatizer",
-
-                filters = new[] { "Tanakh" }
-
-            };
-            var newPostJson = JsonConvert.SerializeObject(values);
-
-            var payload = new StringContent(newPostJson, Encoding.UTF8, "application/json");
-
-            var postResult = await client.PostAsync(endpoint, payload).Result.Content.ReadAsStringAsync();
-
-            return postResult;
-
-        }
-        private static void ConfigurationService(ServiceCollection services)
-        {
-            services.AddHttpClient();
-        }
-
-        static string HebrowSource(string postResult)
+        public static string HebrowSource(string postResult)
         {
             int index, numVal;
             string result, chapter, verse;
@@ -250,7 +128,7 @@ namespace SourceSearch
         static String[] let100 = { "ק", "ר", "ש", "ת" };
         static String[] let10 = { "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ" };
         static String[] let1 = { "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט" };
-        public static String FormatHebrew(int num)
+        static String FormatHebrew(int num)
         {
             if (num <= 0 || num >= 6000)
                 throw new Exception();
@@ -311,6 +189,57 @@ namespace SourceSearch
             return ret.ToString();
         }
 
+        public static string SameVerse(string res, string oldRes)
+        {
+            var subsRes = res.Split(' ');
+            var subsOld = oldRes.Split(' ');
+            string concat = string.Empty;
+
+            if (subsRes.Length == subsOld.Length)
+            {
+                if (subsRes.Length == 4 && subsRes[0] == subsOld[0] && subsRes[1] == subsOld[1])
+                {
+                    if (subsRes[2] == subsOld[2])
+                        concat = $"שם שם {subsRes[3]}";
+                    else
+                        concat = $"שם {subsRes[3]} {subsRes[2]}";
+                }
+                else if (subsRes.Length == 3 && subsRes[0] == subsOld[0])
+                {
+                    if (subsRes[1] == subsOld[1])
+                        concat = $"שם שם {subsRes[2]}";
+                    else
+                        concat = $"שם {subsRes[1]} {subsRes[1]}";
+                }
+
+                return concat;
+            }
+
+            return res;
+
+
+        }
+        public static string PartVerse(string verse)
+        {
+            string postResult, hebrowResult;
+            var newVerse = verse;
+            var subs = verse.Split(' ');
+
+            for (int i = subs.Length - 1; i >= 3; i--)
+            {
+                newVerse = newVerse.Remove(newVerse.Length - subs[i].Length - 1, subs[i].Length + 1);
+                postResult = Post.VerseSource(newVerse).GetAwaiter().GetResult();
+                hebrowResult = HebrowSource(postResult);
+                if (hebrowResult != "0")
+                {
+                    return hebrowResult;
+                }
+
+            }
+            return "0";
+
+        }
+
     }
     public static class StringExtensions//no refernce
     {
@@ -319,8 +248,7 @@ namespace SourceSearch
             return source?.IndexOf(toCheck, comp) >= 0;
         }
     }
+
+
 }
-
-
-
 
